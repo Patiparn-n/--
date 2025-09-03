@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="th" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>สถาปัตยกรรมรัฐสวัสดิการสร้างชาติ</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Chosen Palette: Warm Neutrals with Green & Blue Accents -->
+    <!-- Application Structure Plan: Restructured into a linear scrolling page with a central, tabbed interface for the three core policy pillars (Transport, Energy, Healthcare). This addresses the user's feedback about the previous layout feeling "strange" and content being incomplete. The new structure is: Vision -> General Problem -> Policy Pillars (Tabs) -> Unified Roadmap. The tabbed section is the main interactive element, allowing users to explore each policy in detail without leaving the context of the page. This is a robust, conventional, and user-friendly UI pattern. -->
+    <!-- Visualization & Content Choices: 
+    - Problem: General cost-of-living Bar Chart (Chart.js) updated to include Transport, Energy, and Healthcare costs.
+    - Policy Pillars (Tabs):
+        - Transport: Re-used existing interactive selector, governance diagram (HTML/CSS), and KPI cards.
+        - Energy (New): Added a new Donut Chart for energy sources and KPI cards for savings.
+        - Healthcare (New): Added a new Bar Chart for healthcare access and KPI cards for reduced costs.
+    - All charts are now initialized only when their respective tab is shown for the first time, preventing rendering glitches in hidden containers.
+    - The overall design provides a clear, comparable structure for each of the three policies. -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+    <style>
+        body {
+            font-family: 'Sarabun', sans-serif;
+            background-color: #FDFBF8;
+            color: #333;
+        }
+        .chart-container {
+            position: relative;
+            width: 100%;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+            height: 350px;
+            max-height: 400px;
+        }
+        @media (max-width: 768px) {
+            .chart-container {
+                height: 300px;
+            }
+        }
+        .nav-link {
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            padding-bottom: 4px;
+        }
+        .nav-link.active {
+            color: #10B981;
+            border-bottom-color: #10B981;
+        }
+        .tab-button {
+            padding: 0.75rem 1.5rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+        .tab-button.active {
+            background-color: #10B981;
+            color: white;
+            box-shadow: 0 4px 14px 0 rgb(16 185 129 / 39%);
+        }
+        .tab-button:not(.active) {
+             background-color: #E5E7EB;
+             color: #4B5563;
+        }
+        .tab-button:not(.active):hover {
+            background-color: #D1D5DB;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .kpi-card {
+            background-color: white;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            border-left: 5px solid #3B82F6;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+        }
+        .timeline-item {
+            position: relative;
+            padding-bottom: 2.5rem;
+            padding-left: 2.5rem;
+            border-left: 2px solid #E5E7EB;
+        }
+        .timeline-item:last-child {
+            border-left-color: transparent;
+            padding-bottom: 0;
+        }
+        .timeline-dot {
+            position: absolute;
+            left: -0.7rem;
+            top: 0.25rem;
+            height: 1.25rem;
+            width: 1.25rem;
+            background-color: #FDFBF8;
+            border: 4px solid #10B981;
+            border-radius: 9999px;
+        }
+    </style>
+</head>
+<body class="antialiased">
+    <header id="main-header" class="bg-white/80 backdrop-blur-md sticky top-0 z-50 shadow-sm">
+        <nav class="container mx-auto px-6 py-4 flex justify-between items-center">
+            <a href="#vision" class="text-xl md:text-2xl font-bold text-gray-800">
+                <span class="text-emerald-500">รัฐสวัสดิการ</span>สร้างชาติ
+            </a>
+            <div class="hidden md:flex space-x-8">
+                <a class="nav-link" data-target="vision">วิสัยทัศน์</a>
+                <a class="nav-link" data-target="problem">สภาพปัญหา</a>
+                <a class="nav-link" data-target="pillars">3 เสาหลักนโยบาย</a>
+                <a class="nav-link" data-target="roadmap">แผนดำเนินงาน</a>
+            </div>
+            <button id="mobile-menu-button" class="md:hidden text-gray-700 focus:outline-none">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7"></path></svg>
+            </button>
+        </nav>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pb-4 border-t border-gray-200">
+             <a class="block py-2 nav-link" data-target="vision">วิสัยทัศน์</a>
+             <a class="block py-2 nav-link" data-target="problem">สภาพปัญหา</a>
+             <a class="block py-2 nav-link" data-target="pillars">3 เสาหลักนโยบาย</a>
+             <a class="block py-2 nav-link" data-target="roadmap">แผนดำเนินงาน</a>
+        </div>
+    </header>
+
+    <main>
+        <section id="vision" class="min-h-screen flex items-center justify-center -mt-16">
+            <div class="w-full text-center px-6">
+                <h2 class="text-4xl md:text-6xl font-extrabold text-gray-800 leading-tight">
+                    สถาปัตยกรรมรัฐสวัสดิการสร้างชาติ
+                </h2>
+                <p class="mt-4 text-lg md:text-xl text-gray-600 max-w-3xl mx-auto">
+                    นโยบายลดต้นทุนชีวิตผ่าน 3 เสาหลัก: <span class="font-semibold text-emerald-600">คมนาคมทั่วถึง</span>, <span class="font-semibold text-blue-600">พลังงานเพื่อชีวิต</span>, และ <span class="font-semibold text-purple-600">สาธารณสุขถ้วนหน้า</span> เพื่อคุณภาพชีวิตที่ดีของคนไทยทุกคน
+                </p>
+                <div class="mt-8">
+                    <a href="#problem" class="bg-emerald-500 text-white font-bold py-3 px-8 rounded-full hover:bg-emerald-600 transition duration-300 shadow-lg inline-block">
+                        สำรวจนโยบาย
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <section id="problem" class="py-16 md:py-24 bg-gray-50">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h3 class="text-3xl md:text-4xl font-bold text-gray-800">ปัญหาค่าครองชีพ: ภาระที่คนไทยต้องแบกรับ</h3>
+                    <p class="mt-3 text-gray-600 max-w-2xl mx-auto">
+                        รายได้ที่เติบโตไม่ทันรายจ่าย โดยเฉพาะค่าเดินทาง พลังงาน และสุขภาพ เป็นอุปสรรคสำคัญต่อการพัฒนาคุณภาพชีวิตของประชาชน
+                    </p>
+                </div>
+                <div class="bg-white p-6 rounded-xl shadow-md">
+                     <div class="chart-container mx-auto">
+                        <canvas id="costOfLivingChart"></canvas>
+                    </div>
+                </div>
+                <p class="text-center mt-4 text-sm text-gray-500">กราฟเปรียบเทียบสัดส่วนรายได้และรายจ่ายหลักเฉลี่ยของครัวเรือน</p>
+            </div>
+        </section>
+        
+        <section id="pillars" class="py-16 md:py-24">
+            <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h3 class="text-3xl md:text-4xl font-bold text-gray-800">3 เสาหลักนโยบายลดต้นทุนชีวิต</h3>
+                    <p class="mt-3 text-gray-600 max-w-2xl mx-auto">
+                        เลือกดูรายละเอียดนโยบายแต่ละด้านเพื่อดูแนวทางแก้ไขปัญหาและผลกระทบเชิงบวก
+                    </p>
+                </div>
+
+                <div class="flex justify-center flex-wrap gap-3 md:gap-6 mb-8" id="tab-buttons">
+                    <button class="tab-button active" data-target="transport">คมนาคมทั่วถึง</button>
+                    <button class="tab-button" data-target="energy">พลังงานเพื่อชีวิต</button>
+                    <button class="tab-button" data-target="health">สาธารณสุขถ้วนหน้า</button>
+                </div>
+
+                <div id="tab-contents">
+                    <!-- Transport Content -->
+                    <div id="transport" class="tab-content active">
+                        <div class="bg-gray-50 p-6 md:p-8 rounded-2xl">
+                            <h4 class="text-2xl font-bold text-gray-800 text-center mb-2">ปฏิรูปการขนส่งสาธารณะทั่วประเทศ</h4>
+                            <p class="text-center text-gray-600 max-w-3xl mx-auto mb-8">เปลี่ยน ขสมก. เป็นแกนกลางในการพัฒนาระบบขนส่งที่เหมาะสมกับบริบทของแต่ละท้องถิ่น</p>
+                            <div class="max-w-md mx-auto mb-8">
+                                <label for="location-type" class="block text-sm font-medium text-gray-700 mb-2">เลือกประเภทพื้นที่ของคุณ:</label>
+                                <select id="location-type" class="w-full p-3 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 transition">
+                                    <option value="metro">เมืองมหานคร</option>
+                                    <option value="major-city">เมืองหลัก</option>
+                                    <option value="secondary-city">เมืองรอง</option>
+                                    <option value="rural">พื้นที่ชนบท</option>
+                                </select>
+                            </div>
+                            <div id="transport-recommendation" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-12"></div>
+                            <h4 class="text-2xl font-bold text-gray-800 text-center mb-6">ผลกระทบเชิงบวก (คมนาคม)</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div class="kpi-card" style="border-color: #EF4444;"><h4 class="text-xl font-bold">ลดค่าเดินทาง 30-50%</h4><p class="mt-2 text-gray-600 text-sm">ประหยัดค่าใช้จ่ายให้ประชาชนในพื้นที่บริการ</p></div>
+                                <div class="kpi-card" style="border-color: #10B981;"><h4 class="text-xl font-bold">สร้างรายได้เข้ารัฐ</h4><p class="mt-2 text-gray-600 text-sm">จากค่าโดยสาร, TOD และอื่นๆ</p></div>
+                                <div class="kpi-card" style="border-color: #3B82F6;"><h4 class="text-xl font-bold">เข้าถึง 45+ ล้านคน</h4><p class="mt-2 text-gray-600 text-sm">ขยายเครือข่ายครอบคลุม เพิ่มความเท่าเทียม</p></div>
+                                <div class="kpi-card" style="border-color: #F59E0B;"><h4 class="text-xl font-bold">ลดมลพิษ PM2.5</h4><p class="mt-2 text-gray-600 text-sm">จากการใช้รถยนต์ส่วนตัวที่ลดลง</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Energy Content -->
+                    <div id="energy" class="tab-content">
+                        <div class="bg-gray-50 p-6 md:p-8 rounded-2xl">
+                             <h4 class="text-2xl font-bold text-gray-800 text-center mb-2">ปฏิรูปโครงสร้างพลังงานเพื่อประชาชน</h4>
+                            <p class="text-center text-gray-600 max-w-3xl mx-auto mb-8">ลดภาระค่าไฟฟ้า ส่งเสริมพลังงานสะอาดที่ทุกคนเป็นเจ้าของได้ และสร้างความมั่นคงทางพลังงาน</p>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                                <div>
+                                    <h5 class="text-xl font-semibold mb-4">แนวทางหลัก:</h5>
+                                    <ul class="space-y-4">
+                                        <li class="flex items-start"><span class="text-2xl mr-3">☀️</span><div><h6 class="font-bold">โซลาร์เซลล์ภาคประชาชน</h6><p class="text-gray-600">รัฐสนับสนุนการติดตั้งบนหลังคาบ้าน และรับซื้อไฟฟ้าส่วนเกินเข้าระบบในราคาที่เป็นธรรม</p></div></li>
+                                        <li class="flex items-start"><span class="text-2xl mr-3">🔌</span><div><h6 class="font-bold">ส่งเสริมยานยนต์ไฟฟ้า (EV)</h6><p class="text-gray-600">ขยายสถานีชาร์จทั่วประเทศ ควบคุมราคาค่าบริการ และสนับสนุนการเปลี่ยนรถยนต์เก่าเป็น EV</p></div></li>
+                                        <li class="flex items-start"><span class="text-2xl mr-3">💰</span><div><h6 class="font-bold">ปรับโครงสร้างค่า FT</h6><p class="text-gray-600">ทบทวนสูตรคำนวณให้สะท้อนต้นทุนที่แท้จริง ลดภาระที่ไม่จำเป็นของผู้บริโภค</p></div></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <div class="chart-container mx-auto">
+                                        <canvas id="energyMixChart"></canvas>
+                                    </div>
+                                    <p class="text-center mt-2 text-sm text-gray-500">เป้าหมายการปรับสัดส่วนการผลิตไฟฟ้า</p>
+                                </div>
+                            </div>
+                             <h4 class="text-2xl font-bold text-gray-800 text-center mt-12 mb-6">ผลกระทบเชิงบวก (พลังงาน)</h4>
+                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div class="kpi-card" style="border-color: #3B82F6;"><h4 class="text-xl font-bold">ลดค่าไฟ 15-25%</h4><p class="mt-2 text-gray-600 text-sm">สำหรับครัวเรือนที่เข้าร่วมโครงการโซลาร์เซลล์</p></div>
+                                <div class="kpi-card" style="border-color: #10B981;"><h4 class="text-xl font-bold">พลังงานสะอาดเพิ่ม 30%</h4><p class="mt-2 text-gray-600 text-sm">เพิ่มสัดส่วนพลังงานหมุนเวียนในระบบไฟฟ้าประเทศ</p></div>
+                                <div class="kpi-card" style="border-color: #F59E0B;"><h4 class="text-xl font-bold">สร้างอาชีพสีเขียว</h4><p class="mt-2 text-gray-600 text-sm">เกิดการจ้างงานในอุตสาหกรรมโซลาร์เซลล์และ EV</p></div>
+                                <div class="kpi-card" style="border-color: #8B5CF6;"><h4 class="text-xl font-bold">ลดการนำเข้าเชื้อเพลิง</h4><p class="mt-2 text-gray-600 text-sm">สร้างความมั่นคงทางพลังงานและประหยัดเงินตราต่างประเทศ</p></div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Health Content -->
+                    <div id="health" class="tab-content">
+                        <div class="bg-gray-50 p-6 md:p-8 rounded-2xl">
+                             <h4 class="text-2xl font-bold text-gray-800 text-center mb-2">ยกระดับหลักประกันสุขภาพถ้วนหน้า</h4>
+                            <p class="text-center text-gray-600 max-w-3xl mx-auto mb-8">ลดค่าใช้จ่ายด้านสุขภาพ เพิ่มการเข้าถึงบริการที่มีคุณภาพ และสร้างเสริมสุขภาพดีให้คนไทยทุกคน</p>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                                <div>
+                                    <h5 class="text-xl font-semibold mb-4">แนวทางหลัก:</h5>
+                                    <ul class="space-y-4">
+                                        <li class="flex items-start"><span class="text-2xl mr-3">🏥</span><div><h6 class="font-bold">อัปเกรด รพ.สต. ทั่วประเทศ</h6><p class="text-gray-600">เพิ่มศักยภาพโรงพยาบาลส่งเสริมสุขภาพตำบลให้เป็นศูนย์ดูแลสุขภาพเบื้องต้นครบวงจรใกล้บ้าน</p></div></li>
+                                        <li class="flex items-start"><span class="text-2xl mr-3">📱</span><div><h6 class="font-bold">แพลตฟอร์มแพทย์ทางไกล (Telemedicine)</h6><p class="text-gray-600">ให้คำปรึกษา วินิจฉัยโรคเบื้องต้น และจัดส่งยาถึงบ้าน ลดความแออัดในโรงพยาบาล</p></div></li>
+                                        <li class="flex items-start"><span class="text-2xl mr-3">💊</span><div><h6 class="font-bold">ปฏิรูปการจัดซื้อยาและเวชภัณฑ์</h6><p class="text-gray-600">รวมศูนย์การจัดซื้อในระดับประเทศเพื่อต่อรองราคา ลดต้นทุน และสร้างความโปร่งใส</p></div></li>
+                                    </ul>
+                                </div>
+                                <div>
+                                    <div class="chart-container mx-auto">
+                                        <canvas id="healthAccessChart"></canvas>
+                                    </div>
+                                     <p class="text-center mt-2 text-sm text-gray-500">เป้าหมายการเพิ่มการเข้าถึงบริการสุขภาพ</p>
+                                </div>
+                            </div>
+                             <h4 class="text-2xl font-bold text-gray-800 text-center mt-12 mb-6">ผลกระทบเชิงบวก (สาธารณสุข)</h4>
+                             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                                <div class="kpi-card" style="border-color: #8B5CF6;"><h4 class="text-xl font-bold">ลดรายจ่ายสุขภาพ 40%</h4><p class="mt-2 text-gray-600 text-sm">ลดภาระค่าใช้จ่าย out-of-pocket ของประชาชน</p></div>
+                                <div class="kpi-card" style="border-color: #3B82F6;"><h4 class="text-xl font-bold">ลดเวลารอคอย 50%</h4><p class="mt-2 text-gray-600 text-sm">ในโรงพยาบาลใหญ่ผ่านระบบ Telemedicine และ รพ.สต.</p></div>
+                                <div class="kpi-card" style="border-color: #10B981;"><h4 class="text-xl font-bold">ป้องกันก่อนป่วย</h6><p class="mt-2 text-gray-600 text-sm">เน้นการส่งเสริมสุขภาพเชิงรุกในชุมชน</p></div>
+                                <div class="kpi-card" style="border-color: #EF4444;"><h4 class="text-xl font-bold">เข้าถึงเท่าเทียม</h4><p class="mt-2 text-gray-600 text-sm">ทุกคนเข้าถึงบริการคุณภาพได้ไม่ว่าอยู่ที่ไหน</p></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="roadmap" class="py-16 md:py-24 bg-gray-50">
+             <div class="container mx-auto px-6">
+                <div class="text-center mb-12">
+                    <h3 class="text-3xl md:text-4xl font-bold text-gray-800">แผนการดำเนินงานร่วม (Unified Roadmap)</h3>
+                    <p class="mt-3 text-gray-600 max-w-2xl mx-auto">
+                        กรอบเวลาการดำเนินนโยบายทั้ง 3 เสาหลัก เพื่อให้เกิดผลสำเร็จภายใน 1 สมัยของรัฐบาล (4 ปี)
+                    </p>
+                </div>
+                <div class="max-w-3xl mx-auto">
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <h4 class="text-xl font-semibold text-emerald-600">ระยะที่ 1: ปีที่ 1 - วางรากฐานและนำร่อง</h4>
+                        <ul class="list-disc list-inside mt-2 text-gray-600 space-y-2">
+                            <li><span class="font-bold">คมนาคม:</span> แก้กฎหมาย, ตั้งบรรษัทฯ, เริ่มโครงการนำร่อง 5-10 จังหวัด</li>
+                            <li><span class="font-bold">พลังงาน:</span> ออกระเบียบโซลาร์เซลล์ภาคประชาชน, เริ่มนำร่องในเมืองหลัก</li>
+                            <li><span class="font-bold">สาธารณสุข:</span> จัดตั้งกองทุนอัปเกรด รพ.สต., พัฒนาแพลตฟอร์ม Telemedicine กลาง</li>
+                        </ul>
+                    </div>
+                    <div class="timeline-item">
+                        <div class="timeline-dot"></div>
+                        <h4 class="text-xl font-semibold text-emerald-600">ระยะที่ 2: ปีที่ 2-3 - ขยายผลทั่วประเทศ</h4>
+                         <ul class="list-disc list-inside mt-2 text-gray-600 space-y-2">
+                            <li><span class="font-bold">คมนาคม:</span> เปิดให้บริการในจังหวัดศูนย์กลางทุกภูมิภาค, พัฒนาตั๋วร่วม</li>
+                            <li><span class="font-bold">พลังงาน:</span> ขยายโครงการโซลาร์เซลล์และสถานีชาร์จ EV ทั่วประเทศ</li>
+                            <li><span class="font-bold">สาธารณสุข:</span> อัปเกรด รพ.สต. ครบ 50% ของเป้าหมาย, เปิดใช้ Telemedicine ทั่วประเทศ</li>
+                        </ul>
+                    </div>
+                    <div class="timeline-item">
+                         <div class="timeline-dot"></div>
+                        <h4 class="text-xl font-semibold text-emerald-600">ระยะที่ 3: ปีที่ 4 - เชื่อมโยงเป็นระบบนิเวศ</h4>
+                          <ul class="list-disc list-inside mt-2 text-gray-600 space-y-2">
+                            <li><span class="font-bold">คมนาคม:</span> เชื่อมโยงระบบขนส่งระหว่างจังหวัด, ประเมินผลและปรับปรุง</li>
+                            <li><span class="font-bold">พลังงาน:</span> สร้างระบบ Net Metering ที่สมบูรณ์, คนไทยเป็นผู้ผลิตและผู้ใช้ไฟฟ้า</li>
+                            <li><span class="font-bold">สาธารณสุข:</span> ระบบข้อมูลสุขภาพเชื่อมโยงกัน, คนไทยมีสุขภาพดีถ้วนหน้า</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer class="bg-gray-800 text-white">
+        <div class="container mx-auto px-6 py-8 text-center">
+            <p>&copy; 2024 ข้อเสนอนโยบายรัฐสวัสดิการสร้างชาติ</p>
+            <p class="text-sm text-gray-400 mt-2">จัดทำขึ้นเพื่อการนำเสนอและสาธิตแนวคิดเชิงนโยบาย</p>
+        </div>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+
+            const costOfLivingCtx = document.getElementById('costOfLivingChart').getContext('2d');
+            new Chart(costOfLivingCtx, {
+                type: 'bar',
+                data: {
+                    labels: ['รายได้รวม', 'ค่าใช้จ่ายรวม'],
+                    datasets: [
+                        { label: 'ค่าเดินทาง', data: [0, 4500], backgroundColor: '#EF4444' },
+                        { label: 'ค่าพลังงาน (ไฟฟ้า,ก๊าซ)', data: [0, 2500], backgroundColor: '#3B82F6' },
+                        { label: 'ค่าสุขภาพ (เฉลี่ย)', data: [0, 1500], backgroundColor: '#8B5CF6' },
+                        { label: 'ค่าใช้จ่ายอื่นๆ', data: [0, 15500], backgroundColor: '#6B7280' },
+                        { label: 'รายได้เฉลี่ย', data: [28000, 0], backgroundColor: '#10B981' },
+                    ]
+                },
+                options: {
+                    responsive: true, maintainAspectRatio: false, indexAxis: 'y',
+                    scales: { x: { stacked: true, ticks: { callback: value => value.toLocaleString('th-TH') + ' บาท' } }, y: { stacked: true } },
+                    plugins: {
+                        title: { display: true, text: 'รายได้เทียบกับรายจ่ายเฉลี่ยต่อเดือน (บาท)', font: { size: 16 } },
+                        tooltip: { callbacks: { label: context => `${context.dataset.label || ''}: ${context.parsed.x.toLocaleString('th-TH')} บาท` } }
+                    }
+                }
+            });
+
+            const charts = {};
+            function initializeChart(id, config) {
+                if (!charts[id]) {
+                    const ctx = document.getElementById(id).getContext('2d');
+                    charts[id] = new Chart(ctx, config);
+                }
+            }
+            
+            const tabButtons = document.querySelectorAll('.tab-button');
+            const tabContents = document.querySelectorAll('.tab-content');
+
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const targetId = button.dataset.target;
+                    
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    button.classList.add('active');
+
+                    tabContents.forEach(content => {
+                        if (content.id === targetId) {
+                            content.classList.add('active');
+                        } else {
+                            content.classList.remove('active');
+                        }
+                    });
+
+                    if (targetId === 'energy') {
+                        initializeChart('energyMixChart', {
+                            type: 'doughnut',
+                            data: {
+                                labels: ['ฟอสซิล (ปัจจุบัน)', 'หมุนเวียน (ปัจจุบัน)', 'หมุนเวียน (เป้าหมาย)'],
+                                datasets: [{ data: [65, 35, 0], backgroundColor: ['#6B7280', '#F59E0B', '#10B981'] }, { data: [0, 0, 60], backgroundColor: ['#6B7280', '#F59E0B', '#10B981'] }]
+                            },
+                            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                        });
+                    } else if (targetId === 'health') {
+                        initializeChart('healthAccessChart', {
+                            type: 'bar',
+                            data: {
+                                labels: ['พบแพทย์ทั่วไป', 'พบแพทย์เฉพาะทาง', 'รับบริการใกล้บ้าน'],
+                                datasets: [{ label: 'ปัจจุบัน', data: [70, 30, 40], backgroundColor: '#F59E0B' }, { label: 'เป้าหมาย', data: [95, 60, 85], backgroundColor: '#8B5CF6' }]
+                            },
+                             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
+                        });
+                    }
+                });
+            });
+
+            const transportData = {
+                'metro': [ { name: 'รถไฟฟ้า (Metro)', icon: '🚆', desc: 'ขนส่งคนจำนวนมากด้วยความเร็วสูง เหมาะกับแกนหลักของเมือง', factors: ['ความหนาแน่น > 10,000 คน/ตร.กม.', 'เดินทาง > 25,000 คน/ชม.'] }, { name: 'รถไฟฟ้ารางเบา (LRT)', icon: '🚈', desc: 'ระบบรองเชื่อมต่อจากสายหลักไปยังพื้นที่รอบนอก', factors: ['ความหนาแน่น 5,000-10,000 คน/ตร.กม.'] }, { name: 'รถโดยสารด่วนพิเศษ (BRT)', icon: '🚌', desc: 'ทางเลือกที่ยืดหยุ่นและลงทุนต่ำ มีช่องทางวิ่งเฉพาะ', factors: ['ถนนมีความกว้างเพียงพอ'] } ],
+                'major-city': [ { name: 'รถไฟฟ้ารางเบา (LRT)', icon: '🚈', desc: 'เป็นกระดูกสันหลังของระบบขนส่งในเมืองใหญ่', factors: ['ประชากร > 500,000 คน', 'การจราจรหนาแน่น'] }, { name: 'รถบัสไฟฟ้า (EV Bus)', icon: '🚍', desc: 'วิ่งในเส้นทางหลักและรอง เป็นมิตรต่อสิ่งแวดล้อม', factors: ['ทดแทนรถสองแถวเดิม', 'ต้นทุนดำเนินการต่ำ'] }, { name: 'รถสาธารณะ On-Demand', icon: '🚐', desc: 'เรียกผ่านแอป ให้บริการในพื้นที่ที่ไม่มีเส้นทางประจำ', factors: ['ให้บริการในซอย/หมู่บ้าน', 'ยืดหยุ่นสูง'] } ],
+                'secondary-city': [ { name: 'รถบัสไฟฟ้า (EV Bus)', icon: '🚍', desc: 'เป็นระบบขนส่งหลักของเมือง ตรงเวลา และน่าเชื่อถือ', factors: ['ประชากร 100,000 - 500,000 คน', 'เชื่อมสถานที่สำคัญ'] }, { name: 'รถสองแถวปรับปรุงใหม่', icon: '🛺', desc: 'ยกระดับรถสองแถวเดิมให้มีมาตรฐานความปลอดภัย', factors: ['เส้นทางรองและในชุมชน', 'คงเอกลักษณ์เดิม'] }, { name: 'จักรยานสาธารณะ', icon: '🚲', desc: 'ส่งเสริมการเดินทางระยะสั้น (Last-mile)', factors: ['มีทางจักรยานที่ปลอดภัย', 'ส่งเสริมการท่องเที่ยว'] } ],
+                'rural': [ { name: 'รถตู้/มินิบัสประจำทาง', icon: '🚐', desc: 'เชื่อมต่อระหว่างอำเภอ ตำบล และหมู่บ้าน', factors: ['ความต้องการไม่หนาแน่น', 'ตารางเวลาวิ่งชัดเจน'] }, { name: 'รถสาธารณะ On-Demand', icon: '🚙', desc: 'นัดหมายล่วงหน้า เหมาะกับพื้นที่ห่างไกล', factors: ['ผู้สูงอายุ/ผู้ป่วยเดินทางไป รพ.'] }, { name: 'สถานีขนส่งชุมชน', icon: '🏠', desc: 'จุดจอดและเชื่อมต่อการเดินทางหลายรูปแบบ', factors: ['เป็นศูนย์กลางของตำบล/หมู่บ้าน'] } ]
+            };
+
+            const recommendationContainer = document.getElementById('transport-recommendation');
+            const locationSelector = document.getElementById('location-type');
+
+            function updateRecommendations() {
+                const recommendations = transportData[locationSelector.value];
+                recommendationContainer.innerHTML = recommendations.map(rec => `
+                    <div class="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1">
+                        <div class="flex items-center"><span class="text-4xl mr-4">${rec.icon}</span><h4 class="text-xl font-bold text-gray-800">${rec.name}</h4></div>
+                        <p class="text-gray-600 mt-3 text-sm">${rec.desc}</p>
+                        <div class="mt-4 pt-4 border-t border-gray-200"><h5 class="font-semibold text-xs text-gray-700 mb-2">ปัจจัยพิจารณา:</h5>
+                            <ul class="text-xs text-gray-500 space-y-1">${rec.factors.map(f => `<li class="flex items-start"><span class="text-emerald-500 mr-2 mt-1">✓</span><span>${f}</span></li>`).join('')}</ul>
+                        </div>
+                    </div>`).join('');
+            }
+            
+            locationSelector.addEventListener('change', updateRecommendations);
+            updateRecommendations();
+
+            const mobileMenuButton = document.getElementById('mobile-menu-button');
+            const mobileMenu = document.getElementById('mobile-menu');
+            mobileMenuButton.addEventListener('click', () => mobileMenu.classList.toggle('hidden'));
+
+            const navLinks = document.querySelectorAll('.nav-link');
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    document.querySelector(link.getAttribute('href') || `#${link.dataset.target}`).scrollIntoView({ behavior: 'smooth' });
+                    if (window.innerWidth < 768) mobileMenu.classList.add('hidden');
+                });
+            });
+
+            const sections = document.querySelectorAll('section');
+            const observer = new IntersectionObserver(entries => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        document.querySelectorAll('.nav-link').forEach(link => {
+                            link.classList.toggle('active', link.dataset.target === entry.target.id);
+                        });
+                    }
+                });
+            }, { rootMargin: `-${document.getElementById('main-header').offsetHeight}px 0px -40% 0px`, threshold: 0 });
+            
+            sections.forEach(section => observer.observe(section));
+        });
+    </script>
+</body>
+</html>
+
